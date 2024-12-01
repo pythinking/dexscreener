@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  dexscreener:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"  # Map container's port 5000 to host's port 5000
+    volumes:
+      - .:/app  # Mount current directory to /app in the container
+    environment:
+      - PYTHONUNBUFFERED=1  # Ensures logs are flushed immediately
