@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Cabeçalho permanece o mesmo -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crypto Meme Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
+        /* Estilos permanecem os mesmos */
         body {
             font-family: 'Roboto', sans-serif;
             margin: 0;
@@ -19,7 +21,7 @@
             background-color: #2c3e50;
             color: #ecf0f1;
             padding: 20px;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
         }
@@ -29,6 +31,7 @@
             padding: 20px;
             overflow-y: auto;
             background-color: #ecf0f1;
+            box-sizing: border-box;
         }
 
         h1 {
@@ -39,7 +42,7 @@
             color: #16a085;
         }
 
-        form, .sort-container {
+        form {
             margin-bottom: 15px;
         }
 
@@ -56,6 +59,7 @@
             border: 1px solid #34495e;
             margin-bottom: 15px;
             width: 100%;
+            box-sizing: border-box;
         }
 
         button {
@@ -79,10 +83,11 @@
             border: 1px solid #ddd;
             border-radius: 8px;
             padding: 15px;
+            box-sizing: border-box;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
-            height: 400px; /* Fixed height for uniform card sizes */
+            height: 400px;
             overflow: hidden;
         }
 
@@ -92,11 +97,19 @@
         }
 
         .card h3 {
-            margin: 0 0 10px;
-            font-size: 1.5em;
+            margin: 10px 0;
+            font-size: 1.2em;
             font-family: 'Luckiest Guy', cursive;
             color: #16a085;
             text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card h3:hover {
+            cursor: pointer;
+            color: #1abc9c;
         }
 
         .price {
@@ -111,47 +124,91 @@
             overflow-y: auto;
             flex-grow: 1;
             padding-right: 10px;
-            position: relative;
-        }
-
-        .description {
-            position: relative;
-            max-height: 100px; /* Limit height to make room for other elements */
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .description.collapsed {
-            max-height: 300px; /* Allow expanded height */
-            overflow-y: auto;
-        }
-
-        .expand-btn {
-            color: #3498db;
-            cursor: pointer;
-            display: inline-block;
-            margin-top: 5px;
-        }
-
-        .expand-btn:hover {
-            text-decoration: underline;
         }
 
         .card-footer {
-            margin-top: auto;
-            text-align: center;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
         }
 
-        .card-footer a {
-            color: #16a085;
+        .card-footer a, .card-footer span {
             text-decoration: none;
+            font-size: 14px;
+            color: #16a085;
         }
+
+        .card-footer a:hover {
+            color: #1abc9c;
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .description {
+            font-size: 0.8em;
+            color: #16a085;
+            margin-bottom: 10px;
+            overflow-wrap: break-word;
+        }
+
+        /* Estilos adicionais para esconder elementos */
+        .hidden {
+            display: none;
+        }
+
+        .cards-container-analize {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            height: calc(100vh - 20px); /* Ajuste para altura da viewport */
+            overflow-y: auto; /* Barra de rolagem vertical */
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .card-analize {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; /* Garante que o conteúdo comece do topo */
+            overflow: hidden; /* Previne overflow de conteúdo */
+        }
+
+        .card-analize h3 {
+            font-size: 1.2em;
+            color: #16a085;
+            margin: 10px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis; /* Corta texto longo com "..." */
+        }
+
     </style>
 </head>
 <body>
     <div class="sidebar">
         <h1>Crypto Dashboard</h1>
-        <form id="filterForm">
+
+        <form id="actionForm">
+            <label for="actionSelector">Action:</label>
+            <select id="actionSelector" name="actionSelector">
+                <option value="market">Market Analyze</option>
+                <option value="memecoins">Memecoins</option>
+                <option value="automatize">Automatize</option>
+                <option value="support">Support</option>
+            </select>
+        </form>
+
+        <!-- Formulário de filtros (aparece somente em Market Analyze) -->
+        <form id="filterForm" class="hidden">
             <label for="minLiquidity">Minimum Liquidity (USD):</label>
             <input type="number" id="minLiquidity" name="minLiquidity" value="10000" required>
 
@@ -166,13 +223,31 @@
 
             <button type="submit">Apply Filters</button>
         </form>
-        <form id="sortForm">
+
+        <!-- Formulário de ordenação (aparece somente em Memecoins) -->
+        <form id="sortForm" class="hidden">
             <label for="sortBy">Sort by:</label>
             <select id="sortBy" name="sortBy">
                 <option value="price">Price</option>
-                <option value="amount">Amount</option>
+                <option value="volume">Volume</option>
                 <option value="name">Name</option>
             </select>
+        </form>
+
+        <!-- Formulário de automatização (aparece somente em Automatize) -->
+        <form id="aiForm" class="hidden">
+            <label for="aiModel">AI Model:</label>
+            <select id="aiModel" name="aiModel">
+                <option value="openai-gpt-3">OpenAI GPT-3</option>
+                <option value="openai-gpt-4">OpenAI GPT-4</option>
+                <option value="ollama">Ollama</option>
+                <!-- Adicione mais modelos conforme necessário -->
+            </select>
+
+            <label for="trainingData">Training Data URL:</label>
+            <input type="url" id="trainingData" name="trainingData" placeholder="Enter training data URL">
+
+            <button type="submit">Run Automation</button>
         </form>
     </div>
     <div class="content">
@@ -182,9 +257,46 @@
     <script>
         let tokensData = [];
 
-        // Handle filter form submission
-        document.getElementById('filterForm').addEventListener('submit', async (e) => {
+        const actionSelector = document.getElementById('actionSelector');
+        const filterForm = document.getElementById('filterForm');
+        const sortForm = document.getElementById('sortForm');
+        const aiForm = document.getElementById('aiForm');
+
+        actionSelector.addEventListener('change', async (e) => {
+            const selectedAction = e.target.value;
+
+            // Esconder todos os formulários inicialmente
+            filterForm.classList.add('hidden');
+            sortForm.classList.add('hidden');
+            aiForm.classList.add('hidden');
+
+            if (selectedAction === 'market') {
+                // Mostrar formulário de filtros
+                filterForm.classList.remove('hidden');
+                // Aplicar lógica de Market Analyze
+                filterForm.dispatchEvent(new Event('submit'));
+            } else if (selectedAction === 'memecoins') {
+                // Mostrar formulário de ordenação
+                sortForm.classList.remove('hidden');
+                // Renderizar tokens
+                const response = await fetch('/boosted-tokens');
+                const tokens = await response.json();
+                tokensData = tokens;
+                renderBoostedTokens(tokens);
+            } else if (selectedAction === 'automatize') {
+                // Mostrar formulário de IA
+                aiForm.classList.remove('hidden');
+                // Limpar resultados
+                document.getElementById('results').innerHTML = '';
+            } else if (selectedAction === 'support') {
+                // Renderizar conteúdo de suporte
+                renderSupportContent();
+            }
+        });
+
+        filterForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+
             const filters = {
                 liquidity: parseFloat(document.getElementById('minLiquidity').value),
                 fdv: parseFloat(document.getElementById('minFdv').value),
@@ -195,17 +307,19 @@
             const response = await fetch(`/filter?liquidity=${filters.liquidity}&fdv=${filters.fdv}&volume=${filters.volume}&txns=${filters.transactions}`);
             const data = await response.json();
             tokensData = data;
-            renderBoostedTokens(data);
+
+            console.log('tokensData', data);
+            renderMarketAnalyzeCards(data);
+            
         });
 
-        // Handle sort dropdown change
-        document.getElementById('sortBy').addEventListener('change', (e) => {
-            const sortBy = e.target.value;
+        sortForm.addEventListener('change', () => {
+            const sortBy = document.getElementById('sortBy').value;
             const sortedData = [...tokensData].sort((a, b) => {
                 if (sortBy === 'price') {
-                    return (b.totalAmount || 0) - (a.totalAmount || 0);
-                } else if (sortBy === 'amount') {
-                    return (b.amount || 0) - (a.amount || 0);
+                    return parseFloat(b.priceUsd || 0) - parseFloat(a.priceUsd || 0);
+                } else if (sortBy === 'volume') {
+                    return parseFloat(b.volume || 0) - parseFloat(a.volume || 0);
                 } else if (sortBy === 'name') {
                     return (a.description || '').localeCompare(b.description || '');
                 }
@@ -213,16 +327,70 @@
             renderBoostedTokens(sortedData);
         });
 
-        async function fetchBoostedTokens() {
-            const response = await fetch('/boosted-tokens');
-            const data = await response.json();
-            tokensData = data; // Save for filtering/sorting
-            renderBoostedTokens(data);
+        aiForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const aiModel = document.getElementById('aiModel').value;
+            const trainingData = document.getElementById('trainingData').value;
+            // Implementar lógica de automação com IA aqui
+            alert(`Running automation with model: ${aiModel} and training data: ${trainingData}`);
+        });
+
+        
+
+        function renderMarketAnalyzeCards(tokens) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = ''; // Limpar resultados anteriores
+
+            tokens.forEach(token => {
+                const baseToken = token.baseToken || {};
+                const quoteToken = token.quoteToken || {};
+                const priceUsd = token.priceUsd || 'N/A';
+                const priceNative = token.priceNative || 'N/A';
+                const fdv = token.fdv || 'N/A';
+                const liquidity = token.liquidity?.usd || 0;
+                const volume24h = token.volume?.h24 || 0;
+                const marketCap = token.marketCap || 'N/A';
+                const pairCreatedAt = new Date(token.pairCreatedAt).toLocaleString() || 'N/A';
+                const priceChange = token.priceChange || {};
+                const socials = token.info?.socials || [];
+                const url = token.url || '#';
+
+                const card = document.createElement('div');
+                card.className = 'card-analize';
+                card.innerHTML = `
+                    <img src="${token.info?.header || 'https://via.placeholder.com/150'}" alt="${baseToken.name || 'Unknown'}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px;">
+                    <h3>${baseToken.name || 'Unknown Token'} (${baseToken.symbol || 'N/A'})</h3>
+                    <p><strong>Price (USD):</strong> $${priceUsd}</p>
+                    <p><strong>Price (Native):</strong> ${priceNative}</p>
+                    <p><strong>FDV:</strong> $${Number(fdv).toLocaleString()}</p>
+                    <p><strong>Market Cap:</strong> $${Number(marketCap).toLocaleString()}</p>
+                    <p><strong>Liquidity (USD):</strong> $${Number(liquidity).toLocaleString()}</p>
+                    <p><strong>24H Volume (USD):</strong> $${Number(volume24h).toLocaleString()}</p>
+                    <p><strong>Pair Created:</strong> ${pairCreatedAt}</p>
+                    <p><strong>Price Changes:</strong> 
+                        <ul style="list-style-type: none; padding: 0;">
+                            <li><strong>1H:</strong> ${priceChange.h1 || 'N/A'}%</li>
+                            <li><strong>6H:</strong> ${priceChange.h6 || 'N/A'}%</li>
+                            <li><strong>24H:</strong> ${priceChange.h24 || 'N/A'}%</li>
+                        </ul>
+                    </p>
+                    <p><strong>Socials:</strong> 
+                        ${socials.map(social => `<a href="${social.url}" target="_blank">${social.type || 'Social Link'}</a>`).join(', ') || 'No socials available'}
+                    </p>
+                    <div class="card-footer">
+                        <a href="${url}" target="_blank">View on DexScreener</a>
+                    </div>
+                `;
+
+                resultsDiv.appendChild(card);
+            });
         }
+
+
 
         function renderBoostedTokens(tokens) {
             const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = ''; // Clear previous results
+            resultsDiv.innerHTML = ''; // Limpar resultados anteriores
 
             tokens.forEach(token => {
                 const name = token.description || "No description available";
@@ -231,9 +399,11 @@
                 const icon = token.icon || 'https://via.placeholder.com/150';
                 const url = token.url || '#';
                 const header = token.header || 'https://via.placeholder.com/900x300';
-                const links = token.links.map(link => `
-                    <a href="${link.url}" target="_blank">${link.label || link.type || "Link"}</a>
-                `).join(', ') || "No links available";
+                const links = token.links
+                    ? token.links.map(link => `
+                        <a href="${link.url}" target="_blank">${link.label || link.type || "Link"}</a>
+                    `).join(', ')
+                    : "No links available";
 
                 const truncatedDescription = name.length > 500 
                     ? `${name.substring(0, 500)}...` 
@@ -256,7 +426,7 @@
                     </div>
                 `;
 
-                // Add functionality for expand/collapse
+                // Funcionalidade de expandir/recolher
                 const description = card.querySelector('.description');
                 const expandBtn = card.querySelector('.expand-btn');
                 expandBtn.addEventListener('click', () => {
@@ -268,8 +438,27 @@
             });
         }
 
-        // Fetch initial boosted tokens
-        fetchBoostedTokens();
+        function renderSupportContent() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <h2>Support</h2>
+                <p>Please refer to the README for more information:</p>
+                <a href="https://github.com/pythinking/dexscreener/blob/main/README.md" target="_blank">Dexscreener README</a>
+                <h3>Generated JSON Data:</h3>
+                <pre id="jsonData"></pre>
+            `;
+
+            // Exibir os dados JSON das ações anteriores
+            const jsonDataDiv = document.getElementById('jsonData');
+            if (tokensData.length > 0) {
+                jsonDataDiv.textContent = JSON.stringify(tokensData, null, 2);
+            } else {
+                jsonDataDiv.textContent = 'No data available. Please perform "Market Analyze" or "Memecoins" actions first.';
+            }
+        }
+
+        // Inicializar ação padrão
+        actionSelector.dispatchEvent(new Event('change'));
     </script>
 </body>
 </html>
