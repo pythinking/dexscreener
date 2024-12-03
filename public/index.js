@@ -1,4 +1,4 @@
-import { fetchDexScreenerData, fetchTokenData } from './fetchPoolData.js';
+import { fetchTokenData } from './fetchPoolData.js';
 
 const initializeDashboard = () => {
 
@@ -145,70 +145,98 @@ const initializeDashboard = () => {
 
 
         async function renderBoostedTokens(tokens) {
+            
             const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = ''; // Clear previous results
+            resultsDiv.innerHTML = ''; // Limpar resultados anteriores
         
             for (const token of tokens) {
-                const name = token.description || "No description available";
+                const description = token.description || "No description available";
                 const contract = token.tokenAddress || "Unknown contract address";
-                const price = token.totalAmount ? `$${token.totalAmount}` : "N/A";
-                const icon = token.icon || 'https://via.placeholder.com/150';
-                const url = token.url || '#';
                 const header = token.header || 'https://via.placeholder.com/900x300';
-                const links = token.links
-                    ? token.links.map(link => `
-                        <a href="${link.url}" target="_blank">${link.label || link.type || "Link"}</a>
-                    `).join(', ')
-                    : "No links available";
+                const price = token.totalAmount ? `$${token.totalAmount}` : "N/A";
         
                 let pairData = null;
+                let pairDataSubgraph = null;
         
-                // Fetch pair data if the contract address exists
+                // Buscar dados dos pares usando o endereço do contrato
                 if (contract) {
                     try {
-                        pairData = await fetchTokenData(contract);
+                        const fetchedPairs = await fetchTokenData(contract);
+                        if (fetchedPairs && fetchedPairs.length > 0) {
+                            pairData = fetchedPairs[0]; // Usar o primeiro par como exemplo
+                        }
+
+                       
+                        
                     } catch (error) {
                         console.error(`Failed to fetch pair data for contract: ${contract}`, error);
                     }
                 }
         
+                const name = pairData?.baseToken?.name || description;
+                const boots = pairData?.boosts?.active ? pairData?.boosts?.active : 'N/A';
+                const pairAddress = pairData.pairAddress || "Unknown pair address";
+
+        
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
                     <img src="${header}" alt="${name}">
-                    <h3>${name}</h3>
-                    <p class="price">Price: ${price}</p>
+                    <h2 class="name">${name}</h2>
+                    <div class="price-container">
+                        <p class="price">Price: ${price}</p>
+                        <p class="price">Boosts: ${boots}</p>  
+                    </div> 
                     <div class="card-content">
-                        <p class="description">${name.length > 500 ? `${name.substring(0, 500)}...` : name}</p>
+                        <p class="description">${description.length > 500 ? `${description.substring(0, 500)}...` : description}</p>
                         <span id="expand-btn" class="expand-btn">Expand</span>
                         <p><strong>Contract:</strong> 
                             <a href="https://explorer.solana.com/address/${contract}" target="_blank">
                                 ${contract.substring(0, 4)}...${contract.substring(contract.length - 6)}
                             </a>
                         </p>
-                        <p><strong>Links:</strong> ${links}</p>
+                        <p><strong>Pairs:</strong> 
+                            <a href="https://explorer.solana.com/address/${pairAddress}" target="_blank">
+                                ${pairAddress.substring(0, 4)}...${pairAddress.substring(pairAddress.length - 6)}
+                            </a>
+                        </p>
                         <p><strong>Market Cap:</strong> $${pairData?.marketCap?.toLocaleString() || 'N/A'}</p>
                         <p><strong>FDV:</strong> $${pairData?.fdv?.toLocaleString() || 'N/A'}</p>
                         <p><strong>Liquidity (USD):</strong> $${pairData?.liquidityUSD?.toLocaleString() || 'N/A'}</p>
                         <p><strong>Volume (24h):</strong> $${pairData?.volume24h?.toLocaleString() || 'N/A'}</p>
-                        <p><strong>Price (USD):</strong> $${pairData?.priceUsd?.toFixed(6) || 'N/A'}</p>
-                        <p><strong>Price Change (24h):</strong> ${pairData?.priceChange24h || 'N/A'}%</p>
                         <p><strong>Base Token:</strong> ${pairData?.baseToken?.name || 'N/A'} (${pairData?.baseToken?.symbol || 'N/A'})</p>
                         <p><strong>Quote Token:</strong> ${pairData?.quoteToken?.name || 'N/A'} (${pairData?.quoteToken?.symbol || 'N/A'})</p>
-                        ${pairData?.info?.websites?.map(site => `<p><a href="${site.url}" target="_blank">${site.label}</a></p>`).join('') || ''}
+
+                        <p><strong>Token 0:</strong> ${pairDataSubgraph?.token0.symbol || 'N/A'} (${pairDataSubgraph?.reserve0 || 'N/A'})</p>
+                        <p><strong>Token 1:</strong> ${pairDataSubgraph?.token1.symbol || 'N/A'} (${pairDataSubgraph?.reserve1 || 'N/A'})</p>
+                        <p><strong>Liquidity (USD):</strong> $${pairDataSubgraph?.liquidityUSD?.toLocaleString() || 'N/A'}</p>
+                        <p><strong>Volume (USD):</strong> $${pairDataSubgraph?.volumeUSD?.toLocaleString() || 'N/A'}</p>
+                        <p><strong>Token 0 Price:</strong> $${pairDataSubgraph?.token0Price || 'N/A'}</p>
+                        <p><strong>Token 1 Price:</strong> $${pairDataSubgraph?.token1Price || 'N/A'}</p>
                     </div>
                     <div class="card-footer">
-                        <a href="${url}" target="_blank" class="btn-dexscreener">View on DexScreener</a>
+                        <a href="${pairData?.url || '#'}" target="_blank" class="btn-dexscreener">View on DexScreener</a>
+                        <a href="https://explorer.solana.com/address/${contract}" target="_blank" class="btn-contract">Contract</a>
+                        ${pairData?.info?.socials?.map(social => `
+                            <a href="${social.url}" target="_blank" class="btn-social">
+                                <img src="https://icons.getbootstrap.com/icons/${social.type}.svg" alt="${social.type}" class="btn-icon">
+                            </a>`).join('')}
                     </div>
                 `;
         
-                // Expand functionality for the modal
+                // Funcionalidade para Expandir e Mostrar Modal
                 card.querySelector('.expand-btn').addEventListener('click', () => {
                     createModal({
                         title: name,
                         imgSrc: header,
-                        description: name,
+                        description,
                         contractAddress: contract,
+                        marketCap: pairData?.marketCap,
+                        fdv: pairData?.fdv,
+                        liquidityUSD: pairData?.liquidityUSD,
+                        volume24h: pairData?.volume24h,
+                        baseToken: pairData?.baseToken,
+                        quoteToken: pairData?.quoteToken,
                         socials: pairData?.info?.socials || [],
                         websites: pairData?.info?.websites || []
                     });
@@ -217,6 +245,7 @@ const initializeDashboard = () => {
                 resultsDiv.appendChild(card);
             }
         }
+        
 
         function createModal({ title, imgSrc, description, contractAddress, socials, websites }) {
             // Remove existing modals

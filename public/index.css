@@ -97,6 +97,14 @@ button:hover {
     text-overflow: ellipsis;
 }
 
+.card h2 {
+    margin: 10px 0;
+    font-family: 'Luckiest Guy', cursive;
+    color: #16a085;
+    text-align: center;
+    font-size: 1.5em;
+}
+
 .card h3:hover {
     cursor: pointer;
     color: #1abc9c;
@@ -109,6 +117,7 @@ button:hover {
     margin-bottom: 10px;
     text-align: center;
 }
+
 
 .card-content {
     overflow-y: auto;
@@ -331,6 +340,12 @@ button:hover {
 .modal-footer a:hover {
     transform: translateY(-3px);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+
+.price-container {
+    display: flex;
+    justify-content: space-between;
 }
 
 /* Animações */

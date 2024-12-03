@@ -2,9 +2,119 @@ from flask import Flask, request, jsonify, send_from_directory
 import requests
 from dexscreener import DexscreenerClient
 from dexscreener.models import TokenPair, TokenInfo, OrderInfo
+import json
+from web3 import Web3
 
 # Flask Application
 app = Flask(__name__, static_folder="public")
+
+
+# Uniswap V2 Pair contract ABI
+PAIR_ABI = json.loads('''
+[
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "token0",
+        "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "token1",
+        "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "getReserves",
+        "outputs": [
+            {"internalType": "uint112", "name": "_reserve0", "type": "uint112"},
+            {"internalType": "uint112", "name": "_reserve1", "type": "uint112"},
+            {"internalType": "uint32", "name": "_blockTimestampLast", "type": "uint32"}
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "price0CumulativeLast",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "price1CumulativeLast",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    }
+]
+''')
+
+# Default node URLs for different chains
+CHAIN_PROVIDERS = {
+    "ethereum": "https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID",
+    "solana": "https://api.mainnet-beta.solana.com",
+    "arbitrum": "https://endpoints.omniatech.io/v1/arbitrum/sepolia/public",
+}
+
+
+
+
+def fetch_pair_data(pair_address, node_url):
+    """
+    Fetch data from a Uniswap V2 pair contract.
+
+    Args:
+        pair_address (str): The address of the pair contract.
+        node_url (str): The Ethereum node HTTP URL.
+
+    Returns:
+        dict: A dictionary containing the pair data.
+    """
+    web3 = Web3(Web3.HTTPProvider(node_url))
+
+    if not web3.is_connected():
+        raise ConnectionError("Failed to connect to the blockchain node.")
+
+    pair_contract = web3.eth.contract(address=pair_address, abi=PAIR_ABI)
+
+    token0_address = pair_contract.functions.token0().call()
+    token1_address = pair_contract.functions.token1().call()
+
+    reserves = pair_contract.functions.getReserves().call()
+    reserve0 = reserves[0]
+    reserve1 = reserves[1]
+    block_timestamp_last = reserves[2]
+
+    price0_cumulative_last = pair_contract.functions.price0CumulativeLast().call()
+    price1_cumulative_last = pair_contract.functions.price1CumulativeLast().call()
+
+    return {
+        "token0_address": token0_address,
+        "token1_address": token1_address,
+        "reserve0": reserve0,
+        "reserve1": reserve1,
+        "block_timestamp_last": block_timestamp_last,
+        "price0_cumulative_last": price0_cumulative_last,
+        "price1_cumulative_last": price1_cumulative_last,
+    }
+
+
+
 
 
 class DexscreenerAPI:
@@ -105,8 +215,7 @@ def boosted_tokens():
         return jsonify([token.to_dict() for token in boosted_tokens]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
+    
 @app.route("/most-active-tokens", methods=["GET"])
 def most_active_tokens():
     try:
@@ -177,6 +286,47 @@ def pair_list():
         return jsonify([pair.to_dict() if hasattr(pair, 'to_dict') else pair for pair in pairs]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+
+@app.route("/pair-contract", methods=["GET"])
+def pair_data_contract():
+    """
+    Fetch pair data from a contract based on the specified chain and address.
+    """
+    try:
+        # Retrieve query parameters
+        chain = request.args.get("chain", "solana").lower()
+        addresses = request.args.getlist("addresses")
+
+        if not addresses:
+            return jsonify({"error": "Missing required parameter: addresses"}), 400
+
+        # Determine the node URL for the selected chain
+        node_url = CHAIN_PROVIDERS.get(chain)
+        if not node_url:
+            return jsonify({"error": f"Unsupported chain: {chain}"}), 400
+
+        results = []
+        for address in addresses:
+            try:
+                pair_data = fetch_pair_data(address, node_url)
+                if pair_data:
+                    results.append(pair_data)
+            except Exception as e:
+                print(f"Error fetching data for address {address}: {e}")
+
+        if not results:
+            return jsonify({"error": "No data found for provided addresses"}), 404
+
+        return jsonify(results), 200
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+
 
 
 if __name__ == "__main__":
