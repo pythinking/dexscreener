@@ -1,4 +1,4 @@
-import { fetchDexScreenerData } from './fetchPoolData.js';
+import { fetchDexScreenerData, fetchTokenData } from './fetchPoolData.js';
 
 const initializeDashboard = () => {
 
@@ -144,12 +144,11 @@ const initializeDashboard = () => {
         }
 
 
-
-        function renderBoostedTokens(tokens) {
+        async function renderBoostedTokens(tokens) {
             const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = ''; // Limpar resultados anteriores
-
-            tokens.forEach(token => {
+            resultsDiv.innerHTML = ''; // Clear previous results
+        
+            for (const token of tokens) {
                 const name = token.description || "No description available";
                 const contract = token.tokenAddress || "Unknown contract address";
                 const price = token.totalAmount ? `$${token.totalAmount}` : "N/A";
@@ -161,12 +160,18 @@ const initializeDashboard = () => {
                         <a href="${link.url}" target="_blank">${link.label || link.type || "Link"}</a>
                     `).join(', ')
                     : "No links available";
-                                                
-
-                const truncatedDescription = name.length > 500 
-                    ? `${name.substring(0, 500)}...` 
-                    : name;
-
+        
+                let pairData = null;
+        
+                // Fetch pair data if the contract address exists
+                if (contract) {
+                    try {
+                        pairData = await fetchTokenData(contract);
+                    } catch (error) {
+                        console.error(`Failed to fetch pair data for contract: ${contract}`, error);
+                    }
+                }
+        
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.innerHTML = `
@@ -174,136 +179,92 @@ const initializeDashboard = () => {
                     <h3>${name}</h3>
                     <p class="price">Price: ${price}</p>
                     <div class="card-content">
-                        <p class="description">${truncatedDescription}</p>                        
+                        <p class="description">${name.length > 500 ? `${name.substring(0, 500)}...` : name}</p>
                         <span id="expand-btn" class="expand-btn">Expand</span>
-                        <p><strong>Contract:</strong> <a href="https://explorer.solana.com/address/${contract}" target="_blank">${contract.substring(0, 4)}...${contract.substring(contract.length - 6)}</a></p>
+                        <p><strong>Contract:</strong> 
+                            <a href="https://explorer.solana.com/address/${contract}" target="_blank">
+                                ${contract.substring(0, 4)}...${contract.substring(contract.length - 6)}
+                            </a>
+                        </p>
                         <p><strong>Links:</strong> ${links}</p>
+                        <p><strong>Market Cap:</strong> $${pairData?.marketCap?.toLocaleString() || 'N/A'}</p>
+                        <p><strong>FDV:</strong> $${pairData?.fdv?.toLocaleString() || 'N/A'}</p>
+                        <p><strong>Liquidity (USD):</strong> $${pairData?.liquidityUSD?.toLocaleString() || 'N/A'}</p>
+                        <p><strong>Volume (24h):</strong> $${pairData?.volume24h?.toLocaleString() || 'N/A'}</p>
+                        <p><strong>Price (USD):</strong> $${pairData?.priceUsd?.toFixed(6) || 'N/A'}</p>
+                        <p><strong>Price Change (24h):</strong> ${pairData?.priceChange24h || 'N/A'}%</p>
+                        <p><strong>Base Token:</strong> ${pairData?.baseToken?.name || 'N/A'} (${pairData?.baseToken?.symbol || 'N/A'})</p>
+                        <p><strong>Quote Token:</strong> ${pairData?.quoteToken?.name || 'N/A'} (${pairData?.quoteToken?.symbol || 'N/A'})</p>
+                        ${pairData?.info?.websites?.map(site => `<p><a href="${site.url}" target="_blank">${site.label}</a></p>`).join('') || ''}
                     </div>
                     <div class="card-footer">
-                        <a href="${url}" target="_blank">View on DexScreener</a>
+                        <a href="${url}" target="_blank" class="btn-dexscreener">View on DexScreener</a>
                     </div>
                 `;
-
-                // Funcionalidade de expandir/recolher
-                const description = card.querySelector('.description');
-                const expandBtn = card.querySelector('.expand-btn');
-
-                
-                document.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('expand-btn')) {
-                        document.querySelectorAll('.modal, .modal-backdrop').forEach(el => el.remove());
-
-                        const cardContent = e.target.closest('.card-content');
-                        if (!cardContent) return;
-
-                        const title = e.target.closest('.card').querySelector('h3').textContent;
-                        const imgSrc = e.target.closest('.card').querySelector('img').src;
-                        const fullDescription = cardContent.querySelector('.description').textContent;
-                        const contractAddress = e.target.closest('.card').dataset.contract;
-
-                        const backdrop = document.createElement('div');
-                        backdrop.className = 'modal-backdrop';
-                        document.body.appendChild(backdrop);
-
-                        const modal = document.createElement('div');
-                        modal.className = 'modal';
-                        modal.innerHTML = `
-                            <div class="modal-content">
-                                <h3>${title}</h3>
-                                <img src="${imgSrc}" alt="${title}" style="max-width: 100%; border-radius: 10px; margin: 10px 0;">
-                                <p>${fullDescription}</p>
-                                <a href="https://explorer.solana.com/address/${contractAddress}" target="_blank" class="btn-contract">View Contract</a>
-                                <div class="modal-footer">
-                                    <a href="https://twitter.com/" target="_blank">Twitter</a>
-                                    <a href="https://linkedin.com/" target="_blank">LinkedIn</a>
-                                    <a href="https://t.me/" target="_blank">Telegram</a>
-                                </div>
-                            </div>
-                        `;
-                        document.body.appendChild(modal);
-
-                        const closeModal = () => {
-                            modal.remove();
-                            backdrop.remove();
-                        };
-
-                        backdrop.addEventListener('click', closeModal);
-                    }
+        
+                // Expand functionality for the modal
+                card.querySelector('.expand-btn').addEventListener('click', () => {
+                    createModal({
+                        title: name,
+                        imgSrc: header,
+                        description: name,
+                        contractAddress: contract,
+                        socials: pairData?.info?.socials || [],
+                        websites: pairData?.info?.websites || []
+                    });
                 });
-
+        
                 resultsDiv.appendChild(card);
-            });
+            }
         }
 
-
-        // Helper function to render footer buttons dynamically
-        function renderFooterButtons(url, contractAddress, links) {
-            const buttonIcons = {
-                dexscreener: '<i class="fa-solid fa-chart-line"></i>',
-                contract: '<i class="fa-solid fa-file-contract"></i>',
-                twitter: '<i class="fa-brands fa-twitter"></i>',
-                linkedin: '<i class="fa-brands fa-linkedin"></i>',
-                telegram: '<i class="fa-brands fa-telegram"></i>',
-                website: '<i class="fa-solid fa-globe"></i>',
-                default: '<i class="fa-solid fa-link"></i>',
-            };
-
-            let footerButtons = `
-                <button onclick="window.open('${url}', '_blank')" class="btn-footer">
-                    ${buttonIcons.dexscreener}
-                </button>
-                <button onclick="window.open('https://explorer.solana.com/address/${contractAddress}', '_blank')" class="btn-footer">
-                    ${buttonIcons.contract}
-                </button>
-            `;
-
-            links.forEach(link => {
-                const type = link.type?.toLowerCase() || link.label?.toLowerCase() || 'default';
-                const icon = buttonIcons[type] || buttonIcons.default;
-
-                footerButtons += `
-                    <button onclick="window.open('${link.url}', '_blank')" class="btn-footer">
-                        ${icon}
-                    </button>
-                `;
-            });
-
-            return `
-                <div class="footer-row">
-                    ${footerButtons}
-                </div>
-            `;
-        }
-
-        // Modal functionality
-        function openModal(title, imgSrc, description, contractAddress) {
+        function createModal({ title, imgSrc, description, contractAddress, socials, websites }) {
+            // Remove existing modals
             document.querySelectorAll('.modal, .modal-backdrop').forEach(el => el.remove());
-
+        
             const backdrop = document.createElement('div');
             backdrop.className = 'modal-backdrop';
             document.body.appendChild(backdrop);
-
+        
             const modal = document.createElement('div');
             modal.className = 'modal';
             modal.innerHTML = `
                 <div class="modal-content">
                     <button class="close-btn">&times;</button>
                     <h3>${title}</h3>
-                    <img src="${imgSrc}" alt="${title}" class="modal-image">
+                    <img src="${imgSrc}" alt="${title}" style="max-width: 100%; border-radius: 10px; margin: 10px 0;">
                     <p>${description}</p>
-                    <a href="https://explorer.solana.com/address/${contractAddress}" target="_blank" class="btn-contract">View Contract</a>
+                    <p><strong>Contract:</strong> 
+                        <a href="https://explorer.solana.com/address/${contractAddress}" target="_blank">${contractAddress}</a>
+                    </p>
+                    <div class="social-links">
+                        ${socials.map(social => `
+                            <a href="${social.url}" target="_blank">${social.type.toUpperCase()}</a>
+                        `).join('')}
+                    </div>
+                    <div class="website-links">
+                        ${websites.map(site => `
+                            <p><a href="${site.url}" target="_blank">${site.label}</a></p>
+                        `).join('')}
+                    </div>
                 </div>
             `;
-            document.body.appendChild(modal);
-
-            const closeModal = () => {
+        
+            // Close modal
+            modal.querySelector('.close-btn').addEventListener('click', () => {
                 modal.remove();
                 backdrop.remove();
-            };
-
-            modal.querySelector('.close-btn').addEventListener('click', closeModal);
-            backdrop.addEventListener('click', closeModal);
+            });
+        
+            backdrop.addEventListener('click', () => {
+                modal.remove();
+                backdrop.remove();
+            });
+        
+            document.body.appendChild(modal);
         }
+        
+        
 
         function renderSupportContent() {
                 const resultsDiv = document.getElementById('results');
