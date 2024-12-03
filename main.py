@@ -74,48 +74,120 @@ CHAIN_PROVIDERS = {
 
 
 
-def fetch_pair_data(pair_address, node_url):
-    """
-    Fetch data from a Uniswap V2 pair contract.
+class BlockchainContractManager:
+    def __init__(self, chain_providers, abi):
+        """
+        Initialize the BlockchainContractManager with chain providers and ABI.
 
-    Args:
-        pair_address (str): The address of the pair contract.
-        node_url (str): The Ethereum node HTTP URL.
+        Args:
+            chain_providers (dict): A dictionary of chain names and their node URLs.
+            abi (list): The ABI for the contract interactions.
+        """
+        self.chain_providers = chain_providers
+        self.abi = abi
+        self.web3_connections = {}
+        self.connected_chains = {}
 
-    Returns:
-        dict: A dictionary containing the pair data.
-    """
-    web3 = Web3(Web3.HTTPProvider(node_url))
+        # Establish and verify connections to all chains
+        self._initialize_connections()
 
-    if not web3.is_connected():
-        raise ConnectionError("Failed to connect to the blockchain node.")
+    def _initialize_connections(self):
+        """
+        Initialize Web3 connections for all provided chains.
+        """
+        for chain, node_url in self.chain_providers.items():
+            if "solana" in chain.lower():
+                self.connected_chains[chain] = self._check_solana_connection(node_url)
+                
+                if self.connected_chains[chain]:
+                    print(f"🔗 Connected to {chain} node.")
+                else:
+                    print(f"❌ Failed to connect to {chain} node.")
+            else:
+                web3 = Web3(Web3.HTTPProvider(node_url))
+                if web3.is_connected():
+                    self.web3_connections[chain] = web3
+                    self.connected_chains[chain] = True
+                    print(f"🔗 Connected to {chain} node.")
+                else:
+                    self.connected_chains[chain] = False
+                    print(f"❌ Failed to connect to {chain} node.")
 
-    pair_contract = web3.eth.contract(address=pair_address, abi=PAIR_ABI)
+    def _check_solana_connection(self, node_url):
+        """
+        Check connection to a Solana node by sending a JSON-RPC request.
 
-    token0_address = pair_contract.functions.token0().call()
-    token1_address = pair_contract.functions.token1().call()
+        Args:
+            node_url (str): The Solana node URL.
 
-    reserves = pair_contract.functions.getReserves().call()
-    reserve0 = reserves[0]
-    reserve1 = reserves[1]
-    block_timestamp_last = reserves[2]
+        Returns:
+            bool: True if connected, False otherwise.
+        """
+        payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "getHealth"
+        }
+        try:
+            response = requests.post(node_url, json=payload, timeout=5)            
+            return response.status_code == 200 and response.json().get("result") == "ok"
+        except Exception as e:
+            print(f"Error connecting to Solana node at {node_url}: {e}")
+            return False
 
-    price0_cumulative_last = pair_contract.functions.price0CumulativeLast().call()
-    price1_cumulative_last = pair_contract.functions.price1CumulativeLast().call()
+    def is_chain_connected(self, chain):
+        """
+        Check if a specific chain is connected.
 
-    return {
-        "token0_address": token0_address,
-        "token1_address": token1_address,
-        "reserve0": reserve0,
-        "reserve1": reserve1,
-        "block_timestamp_last": block_timestamp_last,
-        "price0_cumulative_last": price0_cumulative_last,
-        "price1_cumulative_last": price1_cumulative_last,
-    }
+        Args:
+            chain (str): The blockchain name.
 
-
+        Returns:
+            bool: True if connected, False otherwise.
+        """
+        return self.connected_chains.get(chain.lower(), False)
+    
 
 
+    def call_contract_function(self, chain, pair_address, function_name, *args):
+        """
+        Call a specific function from a contract on Ethereum-like chains.
+
+        Args:
+            chain (str): The blockchain name.
+            pair_address (str): The address of the contract.
+            function_name (str): The name of the function to call.
+            *args: Arguments to pass to the contract function.
+
+        Returns:
+            Any: The result of the function call.
+        """
+        chain = chain.lower()
+        if not self.is_chain_connected(chain):
+            raise ConnectionError(f"Not connected to the blockchain node for chain: {chain}")
+
+        try:
+            # Use pre-established Web3 connection
+            web3 = self.web3_connections.get(chain)
+            if not web3:
+                raise ValueError(f"No connection found for chain: {chain}")
+
+            # Initialize the contract
+            contract = web3.eth.contract(
+                address=Web3.to_checksum_address(pair_address),
+                abi=self.abi
+            )
+
+            # Call the specified function
+            contract_function = getattr(contract.functions, function_name)
+            result = contract_function(*args).call()
+            return result
+        except Exception as e:
+            raise ValueError(f"Error calling function {function_name} on chain {chain} and address {pair_address}: {e}")
+
+
+
+    
 
 class DexscreenerAPI:
     def __init__(self):
@@ -162,6 +234,9 @@ class DexscreenerAPI:
 
 # Instantiate API Helper
 dex_api = DexscreenerAPI()
+# Instantiate the BlockchainContractManager
+contract_manager = BlockchainContractManager(CHAIN_PROVIDERS, PAIR_ABI)
+
 
 
 # Static Files
@@ -288,38 +363,48 @@ def pair_list():
         return jsonify({"error": str(e)}), 500
     
 
-
 @app.route("/pair-contract", methods=["GET"])
 def pair_data_contract():
     """
-    Fetch pair data from a contract based on the specified chain and address.
+    Call a specific function from a contract or return SOL balance for Solana accounts by default.
     """
     try:
-        # Retrieve query parameters
-        chain = request.args.get("chain", "solana").lower()
-        addresses = request.args.getlist("addresses")
+        chain = request.args.get("chain", "ethereum").lower()
+        address = request.args.get("address")
+        function_name = request.args.get("function")
+        args = request.args.getlist("args")  # Pass arguments as list
 
-        if not addresses:
-            return jsonify({"error": "Missing required parameter: addresses"}), 400
+        if not address:
+            return jsonify({"error": "Missing required parameter: address"}), 400
 
-        # Determine the node URL for the selected chain
-        node_url = CHAIN_PROVIDERS.get(chain)
-        if not node_url:
+        if chain not in CHAIN_PROVIDERS:
             return jsonify({"error": f"Unsupported chain: {chain}"}), 400
 
-        results = []
-        for address in addresses:
-            try:
-                pair_data = fetch_pair_data(address, node_url)
-                if pair_data:
-                    results.append(pair_data)
-            except Exception as e:
-                print(f"Error fetching data for address {address}: {e}")
+        if chain == "solana" and not function_name:
+            # Return SOL balance by default for Solana accounts
+            node_url = CHAIN_PROVIDERS.get(chain)
+            payload = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "getBalance",
+                "params": [address]
+            }
+            response = requests.post(node_url, json=payload, timeout=10)
+            if response.status_code != 200:
+                return jsonify({"error": f"Failed to fetch balance: {response.text}"}), 500
+            
+            data = response.json()
+            if not data.get("result"):
+                return jsonify({"error": "No balance information available"}), 404
 
-        if not results:
-            return jsonify({"error": "No data found for provided addresses"}), 404
+            sol_balance = data["result"]["value"] / 1_000_000_000  # Convert lamports to SOL
+            return jsonify({"address": address, "sol_balance": sol_balance}), 200
 
-        return jsonify(results), 200
+        # For Ethereum-like chains or specific functions, call the contract function
+        converted_args = [int(arg) if arg.isdigit() else arg for arg in args]
+        result = contract_manager.call_contract_function(chain, address, function_name, *converted_args)
+
+        return jsonify({"address": address, "function": function_name, "result": result}), 200
 
     except Exception as e:
         print(f"Unexpected error: {e}")

@@ -38,9 +38,6 @@ export async function fetchTokenData(contractAddress) {
                 marketCap: parseFloat(pair.marketCap),
                 fdv: parseFloat(pair.fdv),
                 pairCreatedAt: pair.pairCreatedAt,
-                boosts: {
-                    active: pair.boosts.active,
-                },
                 info: {
                     imageUrl: pair.info?.imageUrl || '',
                     websites: pair.info?.websites || [],
@@ -61,49 +58,20 @@ export async function fetchTokenData(contractAddress) {
 }
 
 
-export async function fetchPairDataFromSubgraph(pairAddress) {
-    const query = `
-        {
-          pairs(where: { id: "${pairAddress}" }) {
-            id
-            reserve0
-            reserve1
-            token0 {
-              id
-              symbol
-              name
-            }
-            token1 {
-              id
-              symbol
-              name
-            }
-            volumeUSD
-            liquidityUSD
-            reserveUSD
-            token0Price
-            token1Price
-          }
-        }
-    `;
-
-    const url = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2"; // Replace with your subgraph
-
+export async function fetchSolanaBalance(contractAddress) {
     try {
-        const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query }),
-        });
+        const url = `http://127.0.0.1:5000/pair-contract?chain=solana&address=${contractAddress}`;
+        const response = await fetch(url);
+        const data = await response.json();
 
-        const result = await response.json();
-        if (result.data && result.data.pairs && result.data.pairs.length > 0) {
-            return result.data.pairs[0];
+        if (data && data.sol_balance) {
+            return data.sol_balance; // Balance in SOL
         } else {
-            throw new Error("Pair not found in subgraph");
+            console.error("No SOL balance data available:", data);
+            return null;
         }
     } catch (error) {
-        console.error("Error fetching data from subgraph:", error);
+        console.error("Error fetching Solana balance:", error);
         return null;
     }
 }

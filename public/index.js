@@ -1,8 +1,10 @@
-import { fetchTokenData } from './fetchPoolData.js';
+import { fetchSolanaBalance, fetchTokenData } from './fetchPoolData.js';
 
 const initializeDashboard = () => {
 
         let tokensData = [];
+
+        let boostedTookensData = [];
 
         const actionSelector = document.getElementById('actionSelector');
         const filterForm = document.getElementById('filterForm');
@@ -24,8 +26,7 @@ const initializeDashboard = () => {
             } else if (selectedAction === 'Boosted Tokens') {
                 sortForm.classList.remove('hidden');
                 const response = await fetch('/boosted-tokens');
-                const tokens = await response.json();
-                tokensData = tokens;
+                const tokens = await response.json();                
                 renderBoostedTokens(tokens);
             } else if (selectedAction === 'Tokens Profiles') {
                 const response = await fetch('/token-profiles');
@@ -65,11 +66,6 @@ const initializeDashboard = () => {
 
         sortForm.addEventListener('change', () => {
             const sortBy = document.getElementById('sortBy').value;
-
-            console.log('sortBy', sortBy, tokensData);
-
-            
-
 
             const sortedData = [...tokensData].sort((a, b) => {
                 if (sortBy === 'price') {
@@ -148,7 +144,18 @@ const initializeDashboard = () => {
             
             const resultsDiv = document.getElementById('results');
             resultsDiv.innerHTML = ''; // Limpar resultados anteriores
+
+            boostedTookensData = tokens;
+
+            if (!Array.isArray(tokens)) {
+                const resultsDiv = document.getElementById('results');
+                const messageDiv = document.createElement('div');
+                messageDiv.innerHTML = `<h2>Oops! Nothing here...</h2><p>Try in a few minutes.</p>`;
+                resultsDiv.appendChild(messageDiv);
+                return
+            }
         
+
             for (const token of tokens) {
                 const description = token.description || "No description available";
                 const contract = token.tokenAddress || "Unknown contract address";
@@ -156,20 +163,21 @@ const initializeDashboard = () => {
                 const price = token.totalAmount ? `$${token.totalAmount}` : "N/A";
         
                 let pairData = null;
-                let pairDataSubgraph = null;
+                let solBalance = null; // To store Solana balance if fetched
         
                 // Buscar dados dos pares usando o endereço do contrato
                 if (contract) {
                     try {
                         const fetchedPairs = await fetchTokenData(contract);
                         if (fetchedPairs && fetchedPairs.length > 0) {
-                            pairData = fetchedPairs[0]; // Usar o primeiro par como exemplo
+                            pairData = fetchedPairs[0]; // Use the first pair as an example
                         }
-
-                       
+        
+                        // Fetch Solana balance if the chain is Solana
+                        solBalance = await fetchSolanaBalance(contract);
                         
                     } catch (error) {
-                        console.error(`Failed to fetch pair data for contract: ${contract}`, error);
+                        console.error(`Failed to fetch data for contract: ${contract}`, error);
                     }
                 }
         
@@ -184,8 +192,9 @@ const initializeDashboard = () => {
                     <img src="${header}" alt="${name}">
                     <h2 class="name">${name}</h2>
                     <div class="price-container">
-                        <p class="price">Price: ${price}</p>
-                        <p class="price">Boosts: ${boots}</p>  
+                        <p class="price">SOL Balance ${solBalance ? solBalance.toFixed(2) : 'N/A'} SOL</p>
+                        <p class="price">Price ${price}</p>
+                        <p class="price">Boosts ${boots}</p>  
                     </div> 
                     <div class="card-content">
                         <p class="description">${description.length > 500 ? `${description.substring(0, 500)}...` : description}</p>
@@ -207,12 +216,6 @@ const initializeDashboard = () => {
                         <p><strong>Base Token:</strong> ${pairData?.baseToken?.name || 'N/A'} (${pairData?.baseToken?.symbol || 'N/A'})</p>
                         <p><strong>Quote Token:</strong> ${pairData?.quoteToken?.name || 'N/A'} (${pairData?.quoteToken?.symbol || 'N/A'})</p>
 
-                        <p><strong>Token 0:</strong> ${pairDataSubgraph?.token0.symbol || 'N/A'} (${pairDataSubgraph?.reserve0 || 'N/A'})</p>
-                        <p><strong>Token 1:</strong> ${pairDataSubgraph?.token1.symbol || 'N/A'} (${pairDataSubgraph?.reserve1 || 'N/A'})</p>
-                        <p><strong>Liquidity (USD):</strong> $${pairDataSubgraph?.liquidityUSD?.toLocaleString() || 'N/A'}</p>
-                        <p><strong>Volume (USD):</strong> $${pairDataSubgraph?.volumeUSD?.toLocaleString() || 'N/A'}</p>
-                        <p><strong>Token 0 Price:</strong> $${pairDataSubgraph?.token0Price || 'N/A'}</p>
-                        <p><strong>Token 1 Price:</strong> $${pairDataSubgraph?.token1Price || 'N/A'}</p>
                     </div>
                     <div class="card-footer">
                         <a href="${pairData?.url || '#'}" target="_blank" class="btn-dexscreener">View on DexScreener</a>
@@ -318,17 +321,27 @@ const initializeDashboard = () => {
                             <div style="flex: 1; background-color: #f4f4f4; padding: 15px; border-radius: 8px;">
                                 <h3>Generated JSON Data</h3>
                                 <pre id="jsonData" style="overflow-x: auto; white-space: pre-wrap;"></pre>
+                                <h3>Boosted Tokens Data</h3>
+                                <pre id="boostedJsonData" style="overflow-x: auto; white-space: pre-wrap;"></pre>
                             </div>
                         </div>
                     </div>
                 `;
 
                 // Adicionar o JSON gerado das ações anteriores
+                
                 const jsonDataDiv = document.getElementById('jsonData');
                 if (tokensData.length > 0) {
                     jsonDataDiv.textContent = JSON.stringify(tokensData, null, 2);
                 } else {
                     jsonDataDiv.textContent = 'No data available. Please perform "Market Analyze" or "Memecoins" actions first.';
+                }
+
+                const boostedJsonDataDiv = document.getElementById('boostedJsonData');
+                if (boostedTokensData.length > 0) {
+                    boostedJsonDataDiv.textContent = JSON.stringify(boostedTokensData, null, 2);
+                } else {
+                    boostedJsonDataDiv.textContent = 'No boosted data available.';
                 }
 
                 // Adicionar o comando curl
