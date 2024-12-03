@@ -60,7 +60,7 @@ export async function fetchTokenData(contractAddress) {
 
 export async function fetchSolanaBalance(contractAddress) {
     try {
-        const url = `http://127.0.0.1:5000/pair-contract?chain=solana&address=${contractAddress}`;
+        const url = `http://127.0.0.1:6000/pair-contract?chain=solana&address=${contractAddress}`;
         const response = await fetch(url);
         const data = await response.json();
 

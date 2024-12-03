@@ -60,7 +60,7 @@ Filter token pairs by parameters like liquidity, volume, and transactions.
 
 **Example Request:**
 ```bash
-http://localhost:5000/filter?pair=BTC/USDT&liquidity=10000&fdv=500000&volume=1000&txns=20
+http://localhost:6000/filter?pair=BTC/USDT&liquidity=10000&fdv=500000&volume=1000&txns=20
 ```
 
 ---
@@ -74,7 +74,7 @@ Fetch details for multiple token pairs.
 
 **Example Request:**
 ```bash
-http://localhost:5000/pair-list?addresses=0x7213a321F1855CF1779f42c0CD85d3D95291D34C
+http://localhost:6000/pair-list?addresses=0x7213a321F1855CF1779f42c0CD85d3D95291D34C
 ```
 
 ---
@@ -88,7 +88,7 @@ Fetch detailed information about a specific token pair.
 
 **Example Request:**
 ```bash
-http://localhost:5000/pair-info?address=0x7213a321F1855CF1779f42c0CD85d3D95291D34C
+http://localhost:6000/pair-info?address=0x7213a321F1855CF1779f42c0CD85d3D95291D34C
 ```
 
 ---
@@ -101,7 +101,7 @@ Search for token pairs based on a query.
 
 **Example Request:**
 ```bash
-http://localhost:5000/search-pairs?query=0x7213a321F1855CF1779f42c0CD85d3D95291D34C
+http://localhost:6000/search-pairs?query=0x7213a321F1855CF1779f42c0CD85d3D95291D34C
 ```
 
 ---
@@ -115,7 +115,7 @@ Fetch orders paid for a specific token.
 
 **Example Request:**
 ```bash
-http://localhost:5000/orders?address=A55XjvzRU4KtR3Lrys8PpLZQvPojPqvnv5bJVHMYy3Jv
+http://localhost:6000/orders?address=A55XjvzRU4KtR3Lrys8PpLZQvPojPqvnv5bJVHMYy3Jv
 ```
 
 ---
@@ -125,7 +125,7 @@ List the most active tokens.
 
 **Example Request:**
 ```bash
-http://localhost:5000/most-active-tokens
+http://localhost:6000/most-active-tokens
 ```
 
 ---
@@ -135,7 +135,7 @@ Retrieve the latest boosted tokens.
 
 **Example Request:**
 ```bash
-http://localhost:5000/boosted-tokens
+http://localhost:6000/boosted-tokens
 ```
 
 ---
@@ -145,7 +145,7 @@ Get the latest token profiles.
 
 **Example Request:**
 ```bash
-http://localhost:5000/token-profiles
+http://localhost:6000/token-profiles
 ```
 
 ---
@@ -174,42 +174,42 @@ http://localhost:5000/token-profiles
 
 #### 1. Filter Token Pairs
 ```bash
-curl "http://localhost:5000/filter?pair=BTC/USDT&liquidity=10000&fdv=500000&volume=1000&txns=20"
+curl "http://localhost:6000/filter?pair=BTC/USDT&liquidity=10000&fdv=500000&volume=1000&txns=20"
 ```
 
 #### 2. Fetch Multiple Pairs
 ```bash
-curl "http://localhost:5000/pair-list?addresses=0x7213a321F1855CF1779f42c0CD85d3D95291D34C"
+curl "http://localhost:6000/pair-list?addresses=0x7213a321F1855CF1779f42c0CD85d3D95291D34C"
 ```
 
 #### 3. Fetch Pair Information
 ```bash
-curl "http://localhost:5000/pair-info?address=0x7213a321F1855CF1779f42c0CD85d3D95291D34C"
+curl "http://localhost:6000/pair-info?address=0x7213a321F1855CF1779f42c0CD85d3D95291D34C"
 ```
 
 #### 4. Search Token Pairs
 ```bash
-curl "http://localhost:5000/search-pairs?query=0x7213a321F1855CF1779f42c0CD85d3D95291D34C"
+curl "http://localhost:6000/search-pairs?query=0x7213a321F1855CF1779f42c0CD85d3D95291D34C"
 ```
 
 #### 5. Fetch Orders Paid
 ```bash
-curl "http://localhost:5000/orders?address=A55XjvzRU4KtR3Lrys8PpLZQvPojPqvnv5bJVHMYy3Jv"
+curl "http://localhost:6000/orders?address=A55XjvzRU4KtR3Lrys8PpLZQvPojPqvnv5bJVHMYy3Jv"
 ```
 
 #### 6. Fetch Most Active Tokens
 ```bash
-curl "http://localhost:5000/most-active-tokens"
+curl "http://localhost:6000/most-active-tokens"
 ```
 
 #### 7. Fetch Boosted Tokens
 ```bash
-curl "http://localhost:5000/boosted-tokens"
+curl "http://localhost:6000/boosted-tokens"
 ```
 
 #### 8. Fetch Token Profiles
 ```bash
-curl "http://localhost:5000/token-profiles"
+curl "http://localhost:6000/token-profiles"
 ```
 
 ---
